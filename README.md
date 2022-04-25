@@ -1,3 +1,9 @@
+Fork in progress, with intention to bring this up to date for Craft 4.
+
+Upstream readme for the version I forked from follows.
+
+---
+
 Warning: not in active development. May work for your needs, but has several limitations.
 If anyone cares to take of development, please contact me.
 
