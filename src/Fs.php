@@ -2,9 +2,8 @@
 namespace craft\cloudinary;
 
 use Craft;
-use craft\base\FlysystemVolume;
-use Enl\Flysystem\Cloudinary\ApiFacade as CloudinaryClient;
-use Enl\Flysystem\Cloudinary\CloudinaryAdapter;
+use craft\flysystem\base\FlysystemFs;
+use CarlosOCarvalho\Flysystem\Cloudinary\CloudinaryAdapter;
 
 /**
  * Class Volume
@@ -15,7 +14,7 @@ use Enl\Flysystem\Cloudinary\CloudinaryAdapter;
  * @author Pixel & Tonic, Inc. <support@pixelandtonic.com>
  * @since  3.0
  */
-class Volume extends FlysystemVolume
+class Fs extends FlysystemFs
 {
     // Static
     // =========================================================================
@@ -64,33 +63,71 @@ class Volume extends FlysystemVolume
     // Public Methods
     // =========================================================================
 
-    public function getFileMetadata(string $uri): array
+    /**
+     * @inheritdoc
+     */
+    public function init(): void
     {
-        return parent::getFileMetadata($this->_removeExtension($uri));
+        parent::init();
+
+        $this->foldersHaveTrailingSlashes = false;
     }
 
     /**
      * @inheritdoc
      */
-    public function createFileByStream(string $path, $stream, array $config)
+    public function rules(): array
     {
-        parent::createFileByStream($this->_removeExtension($path), $stream, $config);
+        $rules = parent::rules();
+        $rules[] = [['cloudName', 'apiKey', 'apiSecret'], 'required'];
+
+        return $rules;
+    }
+
+    /**
+     * @inheritdoc
+     *
+     * @return string|null
+     */
+    public function getSettingsHtml(): ?string
+    {
+        return Craft::$app->getView()->renderTemplate('cloudinary/volumeSettings', [
+            'volume' => $this
+        ]);
     }
 
     /**
      * @inheritdoc
      */
-    public function updateFileByStream(string $path, $stream, array $config)
+    public function getRootUrl(): string
     {
-        parent::updateFileByStream($this->_removeExtension($path), $stream, $config);
+        return rtrim(rtrim($this->url, '/').'/'.$this->subfolder, '/').'/';
     }
 
     /**
      * @inheritdoc
      */
-    public function createDir(string $path)
+    public function write(string $path, string $contents, array $config = []): void
     {
-        parent::createDir($this->_removeExtension($path));
+        error_log("running write on [$path] but we're removing extension first");
+        parent::write($this->_removeExtension($path), contents, $config);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function read(string $path): string
+    {
+        return parent::read($this->_removeExtension($path));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function writeFileFromStream(string $path, $stream, array $config = []): void
+    {
+        error_log("running writeFileFromStream on [$path] but we're removing extension first");
+        parent::writeFileFromStream($this->_removeExtension($path), $stream, $config);
     }
 
     /**
@@ -104,23 +141,7 @@ class Volume extends FlysystemVolume
     /**
      * @inheritdoc
      */
-    public function folderExists(string $path): bool
-    {
-        return parent::folderExists($this->_removeExtension($path));
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function renameFile(string $path, string $newPath)
-    {
-        parent::renameFile($this->_removeExtension($path), $this->_removeExtension($newPath));
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function deleteFile(string $path)
+    public function deleteFile(string $path): void
     {
         parent::deleteFile($this->_removeExtension($path));
     }
@@ -128,7 +149,15 @@ class Volume extends FlysystemVolume
     /**
      * @inheritdoc
      */
-    public function copyFile(string $path, string $newPath)
+    public function renameFile(string $path, string $newPath): void
+    {
+        parent::renameFile($this->_removeExtension($path), $this->_removeExtension($newPath));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function copyFile(string $path, string $newPath): void
     {
         parent::copyFile($this->_removeExtension($path), $this->_removeExtension($newPath));
     }
@@ -138,48 +167,7 @@ class Volume extends FlysystemVolume
      */
     public function getFileStream(string $uriPath)
     {
-        return parent::getFileStream($this->_removeExtension($uriPath));
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function init()
-    {
-        parent::init();
-
-        $this->foldersHaveTrailingSlashes = false;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function rules()
-    {
-        $rules = parent::rules();
-        $rules[] = [['cloudName', 'apiKey', 'apiSecret'], 'required'];
-
-        return $rules;
-    }
-
-    /**
-     * @inheritdoc
-     *
-     * @return string|null
-     */
-    public function getSettingsHtml()
-    {
-        return Craft::$app->getView()->renderTemplate('cloudinary/volumeSettings', [
-            'volume' => $this
-        ]);
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getRootUrl()
-    {
-        return rtrim(rtrim($this->url, '/').'/'.$this->subfolder, '/').'/';
+        return parent::getFileStream($this->_removeExtension($path));
     }
 
     // Protected Methods
@@ -192,19 +180,22 @@ class Volume extends FlysystemVolume
      */
     protected function createAdapter(): CloudinaryAdapter
     {
-        $client = static::client([
+        return new CloudinaryAdapter([
             'cloud_name' => $this->cloudName,
             'api_key' => $this->apiKey,
             'api_secret' => $this->apiSecret,
             'overwrite' => $this->overwrite,
         ]);
-
-        return new CloudinaryAdapter($client);
     }
 
-    protected static function client(array $config = []): CloudinaryClient
+    /**
+     * @inheritdoc
+     *
+     * @return bool Whether the operation was successful.
+     */
+    protected function invalidateCdnPath(string $path): bool
     {
-        return new CloudinaryClient($config);
+        return false; // TODO -- does this need to do anything?
     }
 
     // Private Methods

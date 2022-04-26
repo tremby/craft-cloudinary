@@ -2,7 +2,7 @@
 namespace craft\cloudinary;
 
 use craft\events\RegisterComponentTypesEvent;
-use craft\services\Volumes;
+use craft\services\Fs as FsService;
 use yii\base\Event;
 
 /**
@@ -23,8 +23,8 @@ class Plugin extends \craft\base\Plugin
     {
         parent::init();
 
-        Event::on(Volumes::class, Volumes::EVENT_REGISTER_VOLUME_TYPES, function (RegisterComponentTypesEvent $event) {
-            $event->types[] = Volume::class;
+        Event::on(FsService::class, FsService::EVENT_REGISTER_FILESYSTEM_TYPES, function (RegisterComponentTypesEvent $event) {
+            $event->types[] = Fs::class;
         });
     }
 }
